@@ -16,8 +16,8 @@ from pycocotools import mask as mask_utils
 colormap = mpl.colormaps['Set1'].colors
 print(colormap[0] + (0.5,))
 
-val_gt = PhenoBench("~/datasets/PhenoBench", split='val', target_types=["plant_instances", "leaf_instances"])
-val_predictions = PhenoBench("~/workspace/HierarchicalMask2Former/results", split='val', target_types=["plant_instances", "leaf_instances", "semantics"], make_unique_ids=False)
+val_gt = PhenoBench("/nvmedrive/PhenoBench", split='val', target_types=["plant_instances", "leaf_instances"])
+val_predictions = PhenoBench("/tmp/out2", split='val', target_types=["plant_instances", "leaf_instances", "semantics"], make_unique_ids=False)
     
 images = []
 annotation_id = 0

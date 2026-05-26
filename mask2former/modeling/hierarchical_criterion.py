@@ -186,7 +186,7 @@ class SetCriterion(nn.Module):
         dist_maps, valid = nested_tensor_from_tensor_list(dist_maps).decompose()
         dist_maps = dist_maps[tgt_idx]
 
-        dist_maps = dist_maps.to(dtype=torch.float16)
+        dist_maps = dist_maps.to(dtype=torch.float32)
 
         # No need to upsample predictions as we are using normalized coordinates :)
         # N x 1 x H x W
