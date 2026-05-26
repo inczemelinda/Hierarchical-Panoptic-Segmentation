@@ -16,6 +16,7 @@ from detectron2.projects.point_rend.point_features import (
 )
 
 from ..utils.misc import is_dist_avail_and_initialized, nested_tensor_from_tensor_list
+from .losses.tversky import tversky_loss_jit
 
 def boundary_loss(
         inputs: torch.Tensor,
@@ -110,7 +111,8 @@ class SetCriterion(nn.Module):
     """
 
     def __init__(self, num_classes, matcher, weight_dict, eos_coef, losses,
-                 num_points, oversample_ratio, importance_sample_ratio, use_focal_loss, use_boundary_loss):
+                 num_points, oversample_ratio, importance_sample_ratio, use_focal_loss, use_boundary_loss,
+                 use_tversky_loss=False, tversky_alpha=0.3, tversky_beta=0.7):
         """Create the criterion.
         Parameters:
             num_classes: number of object categories, omitting the special no-object category
@@ -118,6 +120,9 @@ class SetCriterion(nn.Module):
             weight_dict: dict containing as key the names of the losses and as values their relative weight.
             eos_coef: relative classification weight applied to the no-object category
             losses: list of all the losses to be applied. See get_loss for list of available losses.
+            use_tversky_loss: whether to compute Tversky loss in addition to dice/CE
+            tversky_alpha: weight for false positives in Tversky loss
+            tversky_beta: weight for false negatives in Tversky loss (higher = more recall)
         """
         super().__init__()
         self.num_classes = num_classes
@@ -134,6 +139,9 @@ class SetCriterion(nn.Module):
         # loss options
         self.boundary_loss = use_boundary_loss
         self.focal_loss = use_focal_loss
+        self.tversky_loss = use_tversky_loss
+        self.tversky_alpha = tversky_alpha
+        self.tversky_beta = tversky_beta
     
     def get_weights(self):
         return self.weight_dict
@@ -229,6 +237,10 @@ class SetCriterion(nn.Module):
             losses[f"{level}_loss_boundary"] = boundary_loss(point_logits, point_boundaries, num_masks)
         losses[f"{level}_loss_mask"] = sigmoid_ce_loss_jit(point_logits, point_labels, num_masks, self.focal_loss)
         losses[f"{level}_loss_dice"] = dice_loss_jit(point_logits, point_labels, num_masks)
+        if self.tversky_loss:
+            losses[f"{level}_loss_tversky"] = tversky_loss_jit(
+                point_logits, point_labels, num_masks, self.tversky_alpha, self.tversky_beta
+            )
         del dist_maps
         del src_masks
         del target_masks

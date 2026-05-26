@@ -105,12 +105,16 @@ class MaskFormer(nn.Module):
         no_object_weight = cfg.MODEL.MASK_FORMER.NO_OBJECT_WEIGHT
         use_focal = cfg.MODEL.MASK_FORMER.USE_FOCAL_LOSS
         use_boundary = cfg.MODEL.MASK_FORMER.USE_BOUNDARY_LOSS
+        use_tversky = getattr(cfg.MODEL.MASK_FORMER, 'USE_TVERSKY_LOSS', False)
 
         # loss weights
         class_weight = cfg.MODEL.MASK_FORMER.CLASS_WEIGHT
         dice_weight = cfg.MODEL.MASK_FORMER.DICE_WEIGHT
         mask_weight = cfg.MODEL.MASK_FORMER.MASK_WEIGHT
         boundary_weight = cfg.MODEL.MASK_FORMER.BOUNDARY_WEIGHT
+        tversky_weight = getattr(cfg.MODEL.MASK_FORMER, 'TVERSKY_WEIGHT', 0.0)
+        tversky_alpha = getattr(cfg.MODEL.MASK_FORMER, 'TVERSKY_ALPHA', 0.3)
+        tversky_beta = getattr(cfg.MODEL.MASK_FORMER, 'TVERSKY_BETA', 0.7)
 
         # building criterion
         matcher = HungarianMatcher(
@@ -133,6 +137,10 @@ class MaskFormer(nn.Module):
             weight_dict["plant_loss_boundary"] = boundary_weight
             weight_dict["leaf_loss_boundary"] = boundary_weight
 
+        if use_tversky:
+            weight_dict["plant_loss_tversky"] = tversky_weight / 2
+            weight_dict["leaf_loss_tversky"] = tversky_weight / 2
+
         if deep_supervision:
             dec_layers = cfg.MODEL.MASK_FORMER.DEC_LAYERS
             aux_weight_dict = {}
@@ -152,7 +160,10 @@ class MaskFormer(nn.Module):
             oversample_ratio=cfg.MODEL.MASK_FORMER.OVERSAMPLE_RATIO,
             importance_sample_ratio=cfg.MODEL.MASK_FORMER.IMPORTANCE_SAMPLE_RATIO,
             use_focal_loss=use_focal,
-            use_boundary_loss=use_boundary
+            use_boundary_loss=use_boundary,
+            use_tversky_loss=use_tversky,
+            tversky_alpha=tversky_alpha,
+            tversky_beta=tversky_beta,
         )
 
         return {
