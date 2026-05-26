@@ -1,0 +1,27 @@
+_BASE_: r50_2t_9l_bs4_300ep.yaml
+SEED: 42
+MODEL:
+  MASK_FORMER:
+    DEEP_SUPERVISION: True
+    DEC_LAYERS: 4
+    # Enable Tversky loss
+    USE_TVERSKY_LOSS: True
+    TVERSKY_WEIGHT: 3.0       # similar magnitude to DICE_WEIGHT
+    TVERSKY_ALPHA: 0.3        # weight for false positives
+    TVERSKY_BETA: 0.7         # weight for false negatives (recall focus)
+SOLVER:
+  AMP:
+    ENABLED: True             # mixed precision for RTX 4060
+  IMS_PER_BATCH: 2            # small batch for quick testing
+  MAX_ITER: 10                # only 10 iterations for quick test
+  CHECKPOINT_PERIOD: 10
+INPUT:
+  IMAGE_SIZE: 1024
+  USE_FULL_AUG: True          # enable color augmentations
+  RANDOM_FLIP: "both"         # horizontal + vertical flips
+DATALOADER:
+  SAMPLER_TRAIN: "RepeatFactorTrainingSampler"   # oversample rare classes
+TEST:
+  EVAL_PERIOD: 999999         # skip intermediate eval during test
+RESIZE_AUG: False             # multi-scale requires half/double dist_maps (not generated yet)
+OUTPUT_DIR: output/Exp_Tversky_TEST

@@ -19,7 +19,7 @@ __all__ = ["PhenoBenchDatasetMapper"]
 def build_transform_gen(cfg, is_train):
     """
     Create a list of default :class:`Augmentation` from config.
-    Now it includes resizing and flipping.
+    Includes resizing, flipping, rotation, and (optionally) color augmentations.
     Returns:
         list[Augmentation]
     """
@@ -29,13 +29,29 @@ def build_transform_gen(cfg, is_train):
 
     augmentation = []
 
-    augmentation.extend([
-        T.RandomFlip(
-                horizontal=cfg.INPUT.RANDOM_FLIP == "horizontal",
-                vertical=cfg.INPUT.RANDOM_FLIP == "vertical",
-            ),
-        T.RandomRotation([0, 90, 180, 270], sample_style="choice"),
-    ])
+    # Flip augmentation: "horizontal", "vertical", or "both"
+    flip_mode = cfg.INPUT.RANDOM_FLIP
+    if flip_mode == "horizontal":
+        augmentation.append(T.RandomFlip(horizontal=True, vertical=False))
+    elif flip_mode == "vertical":
+        augmentation.append(T.RandomFlip(horizontal=False, vertical=True))
+    elif flip_mode == "both":
+        # Two separate RandomFlip operations so each axis has independent 50% probability
+        augmentation.append(T.RandomFlip(horizontal=True, vertical=False))
+        augmentation.append(T.RandomFlip(horizontal=False, vertical=True))
+
+    # Rotation augmentation (always active)
+    augmentation.append(T.RandomRotation([0, 90, 180, 270], sample_style="choice"))
+
+    # Color augmentations (only when USE_FULL_AUG is enabled)
+    use_full_aug = getattr(cfg.INPUT, 'USE_FULL_AUG', False)
+    if use_full_aug:
+        augmentation.extend([
+            T.RandomBrightness(0.7, 1.3),   # +/- 30% brightness
+            T.RandomContrast(0.7, 1.3),     # +/- 30% contrast
+            T.RandomSaturation(0.7, 1.3),   # +/- 30% saturation
+            T.RandomLighting(0.1),          # slight PCA-based lighting jitter
+        ])
 
     return augmentation
 
@@ -165,12 +181,13 @@ class PhenoBenchDatasetMapper:
                         sem_seg_gt = np.pad(sem_seg_gt, [int((1024 - sem_seg_gt.shape[0]) / 2), int((1024 - sem_seg_gt.shape[1]) / 2)], mode='constant', constant_values=0)
                         pan_seg_gt = np.pad(pan_seg_gt, [int((1024 - pan_seg_gt.shape[0]) / 2), int((1024 - pan_seg_gt.shape[1]) / 2)], mode='constant', constant_values=0)
 
-                    sem_seg_gt = transforms.apply_segmentation(sem_seg_gt)
+                    # Convert to int32 BEFORE applying transforms (color augs need supported dtype)
                     sem_seg_gt = sem_seg_gt.astype(np.int32)
-
-                    pan_seg_gt = transforms.apply_segmentation(pan_seg_gt)
                     pan_seg_gt = pan_seg_gt.astype(np.int32)
-                    dist_maps = [transforms.apply_segmentation(self.convert_to_signed(np.array(d, dtype=np.uint16))) for d in dataset_dict[f"{level}_dist_maps"]]
+
+                    sem_seg_gt = transforms.apply_segmentation(sem_seg_gt)
+                    pan_seg_gt = transforms.apply_segmentation(pan_seg_gt)
+                    dist_maps = [transforms.apply_segmentation(self.convert_to_signed(np.array(d, dtype=np.uint16)).astype(np.int32)) for d in dataset_dict[f"{level}_dist_maps"]]
 
                 classes = []
                 masks = []

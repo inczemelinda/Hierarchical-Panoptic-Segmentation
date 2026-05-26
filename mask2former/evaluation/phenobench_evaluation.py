@@ -108,5 +108,7 @@ class PhenoBenchEvaluator(DatasetEvaluator):
                 logger = logging.getLogger(__name__)
                 results = self._evaluate()
                 logger.info(results)
-            
+                # Return results so Detectron2 writes them to metrics.json (prefixed with dataset name)
+                return results
+
 

@@ -122,5 +122,15 @@ def add_maskformer2_config(cfg):
     cfg.MODEL.MASK_FORMER.USE_BOUNDARY_LOSS = True
     cfg.RESIZE_AUG = False
 
+    # Tversky loss config (new)
+    cfg.MODEL.MASK_FORMER.USE_TVERSKY_LOSS = False  # set True to enable
+    cfg.MODEL.MASK_FORMER.TVERSKY_WEIGHT = 0.0      # loss weight (e.g., 3.0)
+    cfg.MODEL.MASK_FORMER.TVERSKY_ALPHA = 0.3       # weight for false positives
+    cfg.MODEL.MASK_FORMER.TVERSKY_BETA = 0.7        # weight for false negatives (recall focus)
+
+    # Full augmentation config (new)
+    cfg.INPUT.USE_FULL_AUG = False                  # set True to enable color augmentations
+    cfg.INPUT.COLOR_JITTER_PROB = 0.5               # probability of color jitter being applied
+
 
 

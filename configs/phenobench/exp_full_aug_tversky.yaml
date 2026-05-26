@@ -1,0 +1,28 @@
+_BASE_: r50_2t_9l_bs4_300ep.yaml
+SEED: 42
+MODEL:
+  MASK_FORMER:
+    DEEP_SUPERVISION: True
+    DEC_LAYERS: 4
+    # Tversky loss settings
+    USE_TVERSKY_LOSS: True
+    TVERSKY_WEIGHT: 3.0          # similar magnitude to DICE_WEIGHT
+    TVERSKY_ALPHA: 0.3           # weight for false positives
+    TVERSKY_BETA: 0.7            # weight for false negatives (recall focus)
+SOLVER:
+  AMP:
+    ENABLED: True                # CRITICAL for RTX 4060 8GB
+  IMS_PER_BATCH: 4
+  MAX_ITER: 10000                # ~28 epochs (1-2 days on RTX 4060)
+  CHECKPOINT_PERIOD: 2500        # save checkpoint every 2500 iter (4 checkpoints)
+  STEPS: [8500]                  # LR decay starts at iter 8500 (85% of training)
+INPUT:
+  IMAGE_SIZE: 1024
+  USE_FULL_AUG: True             # enable color augmentations
+  RANDOM_FLIP: "both"            # horizontal + vertical flips
+DATALOADER:
+  SAMPLER_TRAIN: "RepeatFactorTrainingSampler"   # oversample rare classes
+TEST:
+  EVAL_PERIOD: 2500              # evaluate every 2500 iter (4 evals during training)
+RESIZE_AUG: False                # multi-scale requires extra dist_maps
+OUTPUT_DIR: output/Exp_FullAug_Tversky_R50
