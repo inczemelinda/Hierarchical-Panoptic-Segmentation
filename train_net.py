@@ -17,6 +17,15 @@ import itertools
 import logging
 import os
 import tempfile
+
+# WSL2 fix: use file_system instead of shared memory for DataLoader workers
+# This avoids "Bus error" crashes due to small /dev/shm in WSL2
+import torch.multiprocessing as _mp
+try:
+    _mp.set_sharing_strategy('file_system')
+except RuntimeError:
+    pass
+
 import time
 
 from collections import OrderedDict

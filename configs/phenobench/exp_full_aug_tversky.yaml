@@ -12,17 +12,18 @@ MODEL:
 SOLVER:
   AMP:
     ENABLED: True                # CRITICAL for RTX 4060 8GB
-  IMS_PER_BATCH: 4
-  MAX_ITER: 10000                # ~28 epochs (1-2 days on RTX 4060)
-  CHECKPOINT_PERIOD: 2500        # save checkpoint every 2500 iter (4 checkpoints)
-  STEPS: [8500]                  # LR decay starts at iter 8500 (85% of training)
+  IMS_PER_BATCH: 2               # batch 4 OOMs on 8GB; 2 is safe
+  MAX_ITER: 15000                # ~21 epochs with bs=2 (~22 hours on RTX 4060)
+  CHECKPOINT_PERIOD: 3000        # save checkpoint every 3000 iter (5 checkpoints)
+  STEPS: [13000]                 # LR decay starts at iter 13000 (87% of training)
 INPUT:
   IMAGE_SIZE: 1024
   USE_FULL_AUG: True             # enable color augmentations
   RANDOM_FLIP: "both"            # horizontal + vertical flips
 DATALOADER:
   SAMPLER_TRAIN: "RepeatFactorTrainingSampler"   # oversample rare classes
+  NUM_WORKERS: 0                                 # avoid WSL2 shared memory bus errors
 TEST:
-  EVAL_PERIOD: 2500              # evaluate every 2500 iter (4 evals during training)
+  EVAL_PERIOD: 3000              # evaluate every 3000 iter (5 evals during training)
 RESIZE_AUG: False                # multi-scale requires extra dist_maps
 OUTPUT_DIR: output/Exp_FullAug_Tversky_R50
