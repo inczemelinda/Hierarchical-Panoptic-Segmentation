@@ -1,0 +1,60 @@
+# Aggressive experiment with Swin-L backbone and tuned Tversky + boundary
+# losses, full training.
+# Smoke-test counterpart: exp_swinL_tversky_TEST.yaml (verified pipeline boots
+# and trains/evals without OOM on RTX 4060 8 GB).
+#
+# Combines: Swin-L backbone, Tversky alpha=0.2 beta=0.8 (more weed recall),
+# higher boundary weight start (0.05 vs 0.01), lower inference thresholds
+# (0.7 vs 0.8), RepeatFactorTrainingSampler, full augmentation (flip both +
+# colour).
+#
+# Inference cost notice: Swin-L is ~7-10x slower than R-50; one full val eval
+# is ~80 minutes on this GPU. With EVAL_PERIOD=3000 over 15000 iter we get 5
+# evals = ~6.7h extra wall time on top of ~6h of pure training.
+#
+# Requires weights/edited_swin_lin21k.pkl (Swin-L ImageNet-21k pretrained,
+# converted via tools/convert-pretrained-swin-model-to-d2.py).
+_BASE_: swinl21k_2t_3l_bs4_300ep_deep_42seed.yaml
+SEED: 42
+MODEL:
+  WEIGHTS: "weights/edited_swin_lin21k.pkl"
+  MASK_FORMER:
+    # --- Tversky tweak: push more recall on weed ---
+    USE_TVERSKY_LOSS: True
+    TVERSKY_WEIGHT: 3.0
+    TVERSKY_ALPHA: 0.2          # was 0.3 — less FP penalty
+    TVERSKY_BETA: 0.8           # was 0.7 — more FN penalty, more recall
+    # --- Boundary weight starts higher (was 0.01) ---
+    # WeightUpdateHook still adds +0.0006 every 448 iters during training.
+    BOUNDARY_WEIGHT: 0.05
+    USE_BOUNDARY_LOSS: True
+    USE_FOCAL_LOSS: True
+    # --- Inference thresholds lowered to recover small weed instances ---
+    TEST:
+      OBJECT_MASK_THRESHOLD: 0.7  # was 0.8
+      OVERLAP_THRESHOLD: 0.7      # was 0.8
+      PANOPTIC_ON: True
+      SEMANTIC_ON: True
+      INSTANCE_ON: False
+      SEM_SEG_POSTPROCESSING_BEFORE_INFERENCE: True
+SOLVER:
+  AMP:
+    ENABLED: True                # mandatory on RTX 4060 8 GB with Swin-L
+  IMS_PER_BATCH: 1               # Swin-L barely fits at bs=1 + AMP on 8 GB
+  MAX_ITER: 15000                # ~15k iter — pure train ~6h on RTX 4060
+  CHECKPOINT_PERIOD: 3000        # 5 checkpoints (3k, 6k, 9k, 12k, final)
+  STEPS: [13000]                 # LR decay starts at ~87% of training
+INPUT:
+  IMAGE_SIZE: 768                # 1024 risks OOM with Swin-L
+  USE_FULL_AUG: True             # colour augmentations on
+  RANDOM_FLIP: "both"            # horizontal + vertical flips
+  FORMAT: "RGB"
+DATALOADER:
+  SAMPLER_TRAIN: "RepeatFactorTrainingSampler"   # oversample weed
+  NUM_WORKERS: 0                                 # WSL2 shm safety
+TEST:
+  EVAL_PERIOD: 3000              # 5 evals at 3k/6k/9k/12k/15k (matches R-50 run)
+                                 # ~80 min each → ~6.7h on top of training.
+                                 # Bump to 5000 (3 evals) or 999999 (none) to save time.
+RESIZE_AUG: False                # multi-scale dist_maps not generated
+OUTPUT_DIR: output/Exp_SwinL_Tversky
