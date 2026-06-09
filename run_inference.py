@@ -64,6 +64,7 @@ def main():
     os.makedirs(os.path.join(args.output_dir, "plant"), exist_ok=True)
     os.makedirs(os.path.join(args.output_dir, "leaf"), exist_ok=True)
     os.makedirs(os.path.join(args.output_dir, "overlay"), exist_ok=True)
+    os.makedirs(os.path.join(args.output_dir, "leaf_overlay"), exist_ok=True)
 
     # Get list of test images
     image_files = sorted(os.listdir(args.input_dir))
@@ -110,13 +111,15 @@ def main():
                 color = tuple(int(c * 255) for c in colormap[i % 9])
                 leaf_viz[leaf_panoptic == leaf_id] = color
 
-        # Create overlay on original image (50% blend)
+        # Create overlays on original image (50% blend each)
         overlay = (0.5 * image + 0.5 * plant_viz).astype(np.uint8)
+        leaf_overlay = (0.5 * image + 0.5 * leaf_viz).astype(np.uint8)
 
-        # Save all three visualizations
+        # Save all four visualizations
         Image.fromarray(plant_viz).save(os.path.join(args.output_dir, "plant", image_name))
         Image.fromarray(leaf_viz).save(os.path.join(args.output_dir, "leaf", image_name))
         Image.fromarray(overlay).save(os.path.join(args.output_dir, "overlay", image_name))
+        Image.fromarray(leaf_overlay).save(os.path.join(args.output_dir, "leaf_overlay", image_name))
 
     print(f"\nDone! Predictions saved to {args.output_dir}/")
 

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hierarchical Mask2Former</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='magnifier.js') }}" defer></script>
+</head>
+<body>
+    <header class="page-header">
+        <div class="container">
+            <h1>Hierarchical Mask2Former</h1>
+            <p class="subtitle">Panoptic segmentation of crops, weeds and leaves on PhenoBench</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="card">
+            <h2>Run a prediction</h2>
+            <form method="post" enctype="multipart/form-data" class="upload-form">
+                <div class="form-grid">
+                    <div class="form-row">
+                        <label for="model">Model</label>
+                        <select id="model" name="model">
+                            {% for key, label in model_choices %}
+                                <option value="{{ key }}" {% if key == selected_model %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label for="image">Test image</label>
+                        <input type="file" id="image" name="image" accept="image/*" required>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit">Run inference</button>
+                </div>
+                {% if filename %}
+                    <p class="hint">Last uploaded file: {{ filename }}</p>
+                {% endif %}
+            </form>
+
+            {% if error %}
+                <div class="alert">{{ error }}</div>
+            {% endif %}
+        </section>
+
+        {% if images %}
+            <section class="card">
+                <div class="card-header">
+                    <h2>Predictions</h2>
+                    <button type="button" id="magnifier-toggle" class="btn-secondary" aria-pressed="false">Magnifier</button>
+                </div>
+                <div class="results-grid">
+                    <figure>
+                        <figcaption>Input image</figcaption>
+                        <img src="{{ images.original }}" alt="Input image">
+                    </figure>
+                    <figure>
+                        <figcaption>Plant-level panoptic segmentation</figcaption>
+                        <img src="{{ images.plant }}" alt="Plant-level panoptic segmentation">
+                    </figure>
+                    <figure>
+                        <figcaption>Plant segmentation overlay on input</figcaption>
+                        <img src="{{ images.overlay }}" alt="Plant segmentation overlay on the input image">
+                    </figure>
+                    <figure>
+                        <figcaption>Leaf-level panoptic segmentation</figcaption>
+                        <img src="{{ images.leaf }}" alt="Leaf-level panoptic segmentation">
+                    </figure>
+                    <figure>
+                        <figcaption>Leaf segmentation overlay on input</figcaption>
+                        <img src="{{ images.leaf_overlay }}" alt="Leaf segmentation overlay on the input image">
+                    </figure>
+                </div>
+            </section>
+        {% endif %}
+
+        <section class="card">
+            <h2>Model evaluation metrics</h2>
+            {% if metrics %}
+                <p class="hint">Latest values for model <strong>{{ selected_model }}</strong>{% if metrics.iteration is not none %} at iteration {{ metrics.iteration }}{% endif %}.</p>
+                <div class="metrics-grid">
+                    {% for key in metric_keys %}
+                        {% if key in metrics['values'] %}
+                            <div class="metric-card">
+                                <div class="metric-name">{{ key }}</div>
+                                <div class="metric-value">{{ "%.2f"|format(metrics['values'][key]) }}</div>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="hint">No evaluation metrics found for this model yet.</p>
+            {% endif %}
+        </section>
+    </main>
+</body>
+</html>

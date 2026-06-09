@@ -110,7 +110,14 @@ def evaluate(plant_prediction, plant_groundtruth, leaf_prediction, leaf_groundtr
     # FN = number of unmatched gt labels
     plant_false_negatives = len(gt_labels) - class_matches #len(class_matches)
 
-    return plant_true_positives, plant_false_positives, plant_false_negatives, leaf_count_true_positive, pred_leaf_count_se, act_leaf_count_se, tp_leaf_count_se, len(gt_labels)
+    # Raw per-plant leaf counts (exclude crop_id=0 which means "not assigned to any crop")
+    gt_leaf_counts_per_plant = [len(v) for k, v in gt_plant_leaf_labels.items() if int(k) != 0]
+    pred_leaf_counts_per_plant = [len(v) for k, v in pred_plant_leaf_labels.items() if int(k) != 0]
+
+    return (plant_true_positives, plant_false_positives, plant_false_negatives,
+            leaf_count_true_positive, pred_leaf_count_se, act_leaf_count_se,
+            tp_leaf_count_se, len(gt_labels),
+            gt_leaf_counts_per_plant, pred_leaf_counts_per_plant)
 
 args = parse_args()
 
@@ -138,6 +145,11 @@ leaf_total_tp = 0
 pred_leaf_total_se = 0
 act_leaf_total_se = 0
 tp_leaf_total_se = 0
+
+# Raw leaf-per-plant lists (one entry per crop plant, across all images).
+# PhenoBench does not annotate leaves on weeds, so we only track crops.
+all_gt_leaf_counts = []
+all_pred_leaf_counts = []
 
 # ------- Calculate correct predicitions -------
 n_total = len(gt_plant_instance_fnames)
@@ -170,25 +182,89 @@ for gt_plant_instance_fname, gt_semantic_fname, gt_leaf_instance_fname, pred_pla
 
     pred_crop_instances[pred_semantics != 1] = 0
 
-    plant_tp, plant_fp, plant_fn, leaf_tp, pred_leaf_se, act_leaf_se, tp_leaf_se, gt_img_total = evaluate(pred_crop_instances, gt_crop_instances, pred_leaf_instance_map, gt_leaf_instance_map)
+    (plant_tp, plant_fp, plant_fn, leaf_tp, pred_leaf_se, act_leaf_se,
+     tp_leaf_se, gt_img_total,
+     gt_leaf_counts_img, pred_leaf_counts_img) = evaluate(
+        pred_crop_instances, gt_crop_instances, pred_leaf_instance_map, gt_leaf_instance_map)
 
     plant_total_tp += plant_tp
     plant_total_fp += plant_fp
     plant_total_fn += plant_fn
     leaf_total_tp += leaf_tp
     pred_leaf_total_se += pred_leaf_se
-    act_leaf_total_se += pred_leaf_se
+    act_leaf_total_se += act_leaf_se   # fixed: was pred_leaf_se by mistake
     total_gt += gt_img_total
     tp_leaf_total_se += tp_leaf_se
+    all_gt_leaf_counts.extend(gt_leaf_counts_img)
+    all_pred_leaf_counts.extend(pred_leaf_counts_img)
+
+# --- Plant detection metrics ---
+plant_pred_total = plant_total_tp + plant_total_fp
+plant_gt_total = plant_total_tp + plant_total_fn
+plant_precision = plant_total_tp / plant_pred_total if plant_pred_total > 0 else 0.0
+plant_recall = plant_total_tp / plant_gt_total if plant_gt_total > 0 else 0.0
+plant_f1 = (2 * plant_precision * plant_recall / (plant_precision + plant_recall)
+            if (plant_precision + plant_recall) > 0 else 0.0)
 
 print('Plant True Positive:', plant_total_tp)
 print('Plant False Positive:', plant_total_fp)
 print('Plant False Negative:', plant_total_fn)
+print(f'Plant Precision: {plant_precision:.4f} ({plant_precision*100:.2f}%)')
+print(f'Plant Recall:    {plant_recall:.4f} ({plant_recall*100:.2f}%)')
+print(f'Plant F1:        {plant_f1:.4f} ({plant_f1*100:.2f}%)')
 print('Leaf Count True Positive:', leaf_total_tp)
 print('GT Total', total_gt)
 print('TP Leaf Count RMSE:', math.sqrt(tp_leaf_total_se/(plant_total_tp)))
 print('Pred Leaf Count RMSE:', math.sqrt(pred_leaf_total_se/(plant_total_tp + plant_total_fp)))
 print('Act Leaf Count RMSE:', math.sqrt(act_leaf_total_se/total_gt))
+
+# --- Raw leaf-per-plant statistics (across all crop plants in the split) ---
+def _stats(label, counts):
+    if not counts:
+        print(f'{label}: no plants')
+        return
+    arr = np.array(counts)
+    total = int(arr.sum())
+    mean = float(arr.mean())
+    median = float(np.median(arr))
+    mn = int(arr.min())
+    mx = int(arr.max())
+    print(f'{label}: total={total}  plants={len(arr)}  '
+          f'avg={mean:.2f}  median={median:.1f}  min={mn}  max={mx}')
+
+print()
+print('--- Leaves per crop plant ---')
+_stats('GT       ', all_gt_leaf_counts)
+_stats('Predicted', all_pred_leaf_counts)
+
+# Distribution histogram (buckets: 0, 1-2, 3-5, 6-10, 11-20, 21+)
+def _hist(counts):
+    if not counts:
+        return None
+    buckets = {'0': 0, '1-2': 0, '3-5': 0, '6-10': 0, '11-20': 0, '21+': 0}
+    for c in counts:
+        if c == 0:
+            buckets['0'] += 1
+        elif c <= 2:
+            buckets['1-2'] += 1
+        elif c <= 5:
+            buckets['3-5'] += 1
+        elif c <= 10:
+            buckets['6-10'] += 1
+        elif c <= 20:
+            buckets['11-20'] += 1
+        else:
+            buckets['21+'] += 1
+    return buckets
+
+print()
+print('--- Leaf-count distribution (#crop plants per bucket) ---')
+gt_hist = _hist(all_gt_leaf_counts)
+pred_hist = _hist(all_pred_leaf_counts)
+if gt_hist and pred_hist:
+    print(f'{"bucket":>8}  {"GT":>8}  {"Pred":>8}')
+    for key in gt_hist:
+        print(f'{key:>8}  {gt_hist[key]:>8}  {pred_hist[key]:>8}')
 
 
 
