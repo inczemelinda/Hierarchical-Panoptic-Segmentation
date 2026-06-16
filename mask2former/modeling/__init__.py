@@ -1,5 +1,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates.
 from .backbone.swin import D2SwinTransformer
+from .backbone.hiera import D2Hiera
 from .backbone.mobilenetv2 import build_mnv2_backbone
 from .pixel_decoder.fpn import BasePixelDecoder
 from .pixel_decoder.msdeformattn import MSDeformAttnPixelDecoder

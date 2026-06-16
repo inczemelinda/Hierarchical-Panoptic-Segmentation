@@ -1,0 +1,69 @@
+# Hiera backbone experiment with tuned Tversky + boundary losses, smoke-test.
+# Full-training counterpart: exp_hiera_tversky.yaml.
+#
+# Hiera (Ryali et al., ICML 2023) is a hierarchical Vision Transformer
+# pretrained self-supervised with MAE. The D2Hiera backbone wraps timm
+# (features_only) — timm loads the pretrained weights internally, so
+# MODEL.WEIGHTS is left empty. Requires a timm version with Hiera support
+# (pip install -U timm).
+#
+# Combines: Hiera-L backbone, Tversky alpha=0.2 beta=0.8 (more weed recall),
+# higher boundary weight start (0.05), lower inference thresholds (0.7),
+# RepeatFactorTrainingSampler, full augmentation (flip both + colour).
+#
+# MAX_ITER=50 — only confirms the pipeline boots, the timm Hiera backbone
+# builds + loads pretrained, the model forwards, AMP works, no OOM. Eval
+# metrics will be near zero (50 iter learns almost nothing). Once verified,
+# switch to exp_hiera_tversky.yaml for the real run.
+_BASE_: r50_2t_3l_bs4_300ep_deep_42seed.yaml
+SEED: 42
+MODEL:
+  BACKBONE:
+    NAME: "D2Hiera"
+  WEIGHTS: ""                       # timm loads MAE pretrained weights internally
+  HIERA:
+    NAME: "hiera_large_224"
+    PRETRAINED: True
+    OUT_FEATURES: ["res2", "res3", "res4", "res5"]
+    DROP_PATH_RATE: 0.3
+  PIXEL_MEAN: [123.675, 116.280, 103.530]
+  PIXEL_STD: [58.395, 57.120, 57.375]
+  MASK_FORMER:
+    DEEP_SUPERVISION: True
+    DEC_LAYERS: 4
+    # --- Tversky tweak: push more recall on weed ---
+    USE_TVERSKY_LOSS: True
+    TVERSKY_WEIGHT: 3.0
+    TVERSKY_ALPHA: 0.2          # was 0.3 — less FP penalty
+    TVERSKY_BETA: 0.8           # was 0.7 — more FN penalty, more recall
+    # --- Boundary weight starts higher (was 0.01) ---
+    BOUNDARY_WEIGHT: 0.05
+    USE_BOUNDARY_LOSS: True
+    USE_FOCAL_LOSS: True
+    # --- Inference thresholds lowered to recover small weed instances ---
+    TEST:
+      OBJECT_MASK_THRESHOLD: 0.7  # was 0.8
+      OVERLAP_THRESHOLD: 0.7      # was 0.8
+      PANOPTIC_ON: True
+      SEMANTIC_ON: True
+      INSTANCE_ON: False
+      SEM_SEG_POSTPROCESSING_BEFORE_INFERENCE: True
+SOLVER:
+  AMP:
+    ENABLED: True                # mandatory on RTX 4060 8 GB with Hiera-L
+  IMS_PER_BATCH: 1               # Hiera-L is large; bs=1 + AMP on 8 GB
+  MAX_ITER: 50                   # SMOKE TEST
+  CHECKPOINT_PERIOD: 50          # save the smoke-test final
+  STEPS: [45]                    # tiny LR decay just so the scheduler is hit
+INPUT:
+  IMAGE_SIZE: 768                # multiple of 32; lower to 512/640 if OOM
+  USE_FULL_AUG: True             # colour augmentations on
+  RANDOM_FLIP: "both"            # horizontal + vertical flips
+  FORMAT: "RGB"
+DATALOADER:
+  SAMPLER_TRAIN: "RepeatFactorTrainingSampler"   # oversample weed
+  NUM_WORKERS: 0                                 # WSL2 shm safety
+TEST:
+  EVAL_PERIOD: 999999            # skip eval during the smoke test
+RESIZE_AUG: False                # multi-scale dist_maps not generated
+OUTPUT_DIR: output/Exp_Hiera_Tversky_TEST
