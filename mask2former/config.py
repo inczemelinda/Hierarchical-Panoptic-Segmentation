@@ -70,6 +70,18 @@ def add_maskformer2_config(cfg):
     # pixel decoder
     cfg.MODEL.SEM_SEG_HEAD.PIXEL_DECODER_NAME = "BasePixelDecoder"
 
+    # Hiera backbone (timm) config
+    # Hierarchical ViT (Ryali et al. 2023), MAE-pretrained, loaded via timm.
+    cfg.MODEL.HIERA = CN()
+    cfg.MODEL.HIERA.NAME = "hiera_large_224"                       # timm model name
+    cfg.MODEL.HIERA.PRETRAINED = True                             # load MAE weights via timm
+    cfg.MODEL.HIERA.OUT_FEATURES = ["res2", "res3", "res4", "res5"]
+    cfg.MODEL.HIERA.DROP_PATH_RATE = 0.3
+    # Build size for the (fixed) absolute pos_embed and unroll/reroll bookkeeping.
+    # Must match the image size the dataset mapper produces (PhenoBench: 1024).
+    cfg.MODEL.HIERA.IMG_SIZE = 1024
+    cfg.MODEL.HIERA.GRAD_CHECKPOINTING = False                    # set True to trade speed for memory
+
     # swin transformer backbone
     cfg.MODEL.SWIN = CN()
     cfg.MODEL.SWIN.PRETRAIN_IMG_SIZE = 224

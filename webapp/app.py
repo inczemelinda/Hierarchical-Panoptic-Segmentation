@@ -57,6 +57,12 @@ MODELS = {
         "weights": os.path.join(PROJECT_ROOT, "output/Exp_SwinL_Tversky/model_final.pth"),
         "output_dir": os.path.join(PROJECT_ROOT, "output/Exp_SwinL_Tversky"),
     },
+    "Hiera": {
+        "label": "Hiera-L",
+        "config": os.path.join(PROJECT_ROOT, "configs/phenobench/exp_hiera_tversky.yaml"),
+        "weights": os.path.join(PROJECT_ROOT, "output/Exp_Hiera_Tversky/model_final.pth"),
+        "output_dir": os.path.join(PROJECT_ROOT, "output/Exp_Hiera_Tversky"),
+    },
 }
 
 # Order in which metric cards are rendered.
