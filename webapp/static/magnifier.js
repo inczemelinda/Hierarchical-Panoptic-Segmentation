@@ -20,12 +20,16 @@
         document.body.appendChild(loupe);
 
         let active = false;
+        const stateLabel = toggle.querySelector(".toggle-text");
 
         function setActive(next) {
             active = next;
             toggle.classList.toggle("active", active);
             toggle.setAttribute("aria-pressed", active ? "true" : "false");
             document.body.classList.toggle("magnifier-active", active);
+            if (stateLabel) {
+                stateLabel.textContent = active ? "ON" : "OFF";
+            }
             if (!active) {
                 loupe.style.display = "none";
             }
@@ -84,13 +88,12 @@
             });
         });
 
-        // Hide the loupe if the cursor leaves the predictions grid altogether
-        const grid = document.querySelector(".results-grid");
-        if (grid) {
+        // Hide the loupe if the cursor leaves any predictions grid
+        document.querySelectorAll(".results-grid").forEach(function (grid) {
             grid.addEventListener("mouseleave", function () {
                 loupe.style.display = "none";
             });
-        }
+        });
 
         // Hide on scroll because the loupe position is viewport-fixed
         window.addEventListener("scroll", function () {

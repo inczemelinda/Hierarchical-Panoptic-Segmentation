@@ -1,3 +1,11 @@
+"""
+per-plant leaf-count evaluation on phenobench.
+
+predicted plants are matched to ground-truth plants by iou, and for every matched
+plant the number of assigned leaves is compared. reports plant detection
+(precision, recall, f1), leaf-count rmse and per-plant leaf statistics. leaves are
+annotated only on crops, so weeds are excluded.
+"""
 import argparse
 import math
 import numpy as np
@@ -192,7 +200,7 @@ for gt_plant_instance_fname, gt_semantic_fname, gt_leaf_instance_fname, pred_pla
     plant_total_fn += plant_fn
     leaf_total_tp += leaf_tp
     pred_leaf_total_se += pred_leaf_se
-    act_leaf_total_se += act_leaf_se   # fixed: was pred_leaf_se by mistake
+    act_leaf_total_se += act_leaf_se   # accumulate the actual-count squared error
     total_gt += gt_img_total
     tp_leaf_total_se += tp_leaf_se
     all_gt_leaf_counts.extend(gt_leaf_counts_img)

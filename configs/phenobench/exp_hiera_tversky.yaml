@@ -1,27 +1,20 @@
-# Hiera backbone experiment with tuned Tversky + boundary losses, full training.
-# Smoke-test counterpart: exp_hiera_tversky_TEST.yaml (verify the pipeline boots
-# and the timm Hiera backbone loads without OOM before launching this).
+# hiera backbone experiment with the proposed additions, full training.
+# smoke-test counterpart: exp_hiera_tversky_TEST.yaml.
 #
-# Hiera (Ryali et al., ICML 2023) is a hierarchical Vision Transformer
-# pretrained self-supervised with MAE. The D2Hiera backbone wraps timm
-# (features_only) — timm loads the pretrained weights internally, so
-# MODEL.WEIGHTS is left empty. Requires a timm version with Hiera support
-# (pip install -U timm).
+# hiera (ryali et al., icml 2023) is a hierarchical vision transformer
+# pretrained self-supervised with mae. the d2hiera backbone wraps timm
+# (features_only) and loads the pretrained weights internally, so model.weights
+# is left empty. requires a timm version with hiera support.
 #
-# Combines: Hiera-L backbone, Tversky alpha=0.2 beta=0.8 (more weed recall),
-# higher boundary weight start (0.05), lower inference thresholds (0.7),
-# RepeatFactorTrainingSampler, full augmentation (flip both + colour).
-#
-# Inference cost notice: Hiera-L is heavy; one full val eval is on the order of
-# ~80 min on this GPU. EVAL_PERIOD=3000 gives 5 evals (3k/6k/9k/12k/15k),
-# matching the R-50 / Swin-L runs. Bump to 5000 (3 evals) or 999999 (none) to
-# save wall time.
+# additions over the baseline: tversky loss (alpha=0.2, beta=0.8) for higher
+# weed recall, higher initial boundary weight, lower inference thresholds,
+# repeat-factor sampling and full augmentation (both-axis flip + colour).
 _BASE_: r50_2t_3l_bs4_300ep_deep_42seed.yaml
 SEED: 42
 MODEL:
   BACKBONE:
     NAME: "D2Hiera"
-  WEIGHTS: ""                       # timm loads MAE pretrained weights internally
+  WEIGHTS: ""                       # timm loads the mae pretrained weights internally
   HIERA:
     NAME: "hiera_large_224"
     PRETRAINED: True
@@ -32,39 +25,39 @@ MODEL:
   MASK_FORMER:
     DEEP_SUPERVISION: True
     DEC_LAYERS: 4
-    # --- Tversky tweak: push more recall on weed ---
+    # tversky loss to emphasise recall on the rare weed class
     USE_TVERSKY_LOSS: True
     TVERSKY_WEIGHT: 3.0
-    TVERSKY_ALPHA: 0.2          # was 0.3 — less FP penalty
-    TVERSKY_BETA: 0.8           # was 0.7 — more FN penalty, more recall
-    # --- Boundary weight starts higher (was 0.01) ---
+    TVERSKY_ALPHA: 0.2          # false-positive weight (lower penalty)
+    TVERSKY_BETA: 0.8           # false-negative weight (higher penalty, more recall)
+    # higher initial boundary weight; a hook increases it during training
     BOUNDARY_WEIGHT: 0.05
     USE_BOUNDARY_LOSS: True
     USE_FOCAL_LOSS: True
-    # --- Inference thresholds lowered to recover small weed instances ---
+    # lower inference thresholds to keep small weed instances
     TEST:
-      OBJECT_MASK_THRESHOLD: 0.7  # was 0.8
-      OVERLAP_THRESHOLD: 0.7      # was 0.8
+      OBJECT_MASK_THRESHOLD: 0.7
+      OVERLAP_THRESHOLD: 0.7
       PANOPTIC_ON: True
       SEMANTIC_ON: True
       INSTANCE_ON: False
       SEM_SEG_POSTPROCESSING_BEFORE_INFERENCE: True
 SOLVER:
   AMP:
-    ENABLED: True                # mandatory on RTX 4060 8 GB with Hiera-L
-  IMS_PER_BATCH: 1               # Hiera-L is large; bs=1 + AMP on 8 GB
-  MAX_ITER: 15000                # ~15k iter — pure train ~6h on RTX 4060
-  CHECKPOINT_PERIOD: 3000        # 5 checkpoints (3k, 6k, 9k, 12k, final)
-  STEPS: [13000]                 # LR decay starts at ~87% of training
+    ENABLED: True                # mixed precision, required on 8 gb
+  IMS_PER_BATCH: 1               # batch size limited by memory
+  MAX_ITER: 15000
+  CHECKPOINT_PERIOD: 3000        # checkpoints at 3k/6k/9k/12k/final
+  STEPS: [13000]                 # learning-rate decay near the end of training
 INPUT:
-  IMAGE_SIZE: 768                # multiple of 32; lower to 512/640 if OOM
-  USE_FULL_AUG: True             # colour augmentations on
-  RANDOM_FLIP: "both"            # horizontal + vertical flips
+  IMAGE_SIZE: 768                # input resolution (multiple of 32)
+  USE_FULL_AUG: True             # colour augmentations enabled
+  RANDOM_FLIP: "both"            # horizontal and vertical flips
   FORMAT: "RGB"
 DATALOADER:
-  SAMPLER_TRAIN: "RepeatFactorTrainingSampler"   # oversample weed
-  NUM_WORKERS: 0                                 # WSL2 shm safety
+  SAMPLER_TRAIN: "RepeatFactorTrainingSampler"   # oversample images with weed
+  NUM_WORKERS: 0                                 # single-process loading (wsl2)
 TEST:
-  EVAL_PERIOD: 3000              # 5 evals at 3k/6k/9k/12k/15k (matches R-50/Swin-L)
-RESIZE_AUG: False                # multi-scale dist_maps not generated
+  EVAL_PERIOD: 3000              # evaluation every 3000 iterations
+RESIZE_AUG: False                # multi-scale distance maps not used
 OUTPUT_DIR: output/Exp_Hiera_Tversky

@@ -1,0 +1,47 @@
+# Authors' Version 3 baseline (Swin-L), WITHOUT this work's additions.
+#
+# Purpose: a clean, fair comparison against exp_swinL_tversky.yaml. Same
+# backbone, same hardware (batch 1 + AMP on RTX 4060 8 GB) and the same
+# 15000-iteration budget, but using only the original method from the
+# boundary-loss paper (arXiv:2501.00527): focal + boundary (0.01) + dice
+# losses, horizontal flip plus 90/180/270 rotations, the default sampler, and
+# inference thresholds of 0.8.
+#
+# It removes everything added in this work: Tversky loss, colour augmentations,
+# both-axis flips, the RepeatFactorTrainingSampler, and the lowered inference
+# thresholds. The only differences from the authors are the hardware
+# constraints (batch size 1 and mixed precision), which are also used by the
+# compared model, so the comparison stays controlled and the gap reflects only
+# this work's contributions.
+#
+# Inherits the authors' Swin-L settings (deep supervision, 4 decoder layers,
+# 200 queries, ImageNet-21k weights) from the config below.
+_BASE_: swinl21k_2t_3l_bs4_300ep_deep_42seed.yaml
+SEED: 42
+MODEL:
+  WEIGHTS: "weights/edited_swin_lin21k.pkl"   # explicit path including the weights/ prefix
+  MASK_FORMER:
+    USE_TVERSKY_LOSS: False       # no Tversky (authors' baseline)
+    USE_FOCAL_LOSS: True          # focal loss (Version 3)
+    USE_BOUNDARY_LOSS: True       # boundary loss (Version 3)
+    BOUNDARY_WEIGHT: 0.01         # authors' value (this work used 0.05)
+    TEST:
+      OBJECT_MASK_THRESHOLD: 0.8  # authors' value (this work used 0.7)
+      OVERLAP_THRESHOLD: 0.8      # authors' value (this work used 0.7)
+SOLVER:
+  AMP:
+    ENABLED: True                 # required on 8 GB; also used by the compared model
+  IMS_PER_BATCH: 1                # 8 GB limit (authors used 2)
+  MAX_ITER: 15000                 # same budget as exp_swinL_tversky.yaml
+  CHECKPOINT_PERIOD: 3000         # 5 checkpoints (3k, 6k, 9k, 12k, final)
+  STEPS: [13000]                  # same schedule as the compared run
+INPUT:
+  USE_FULL_AUG: False             # no colour augmentations (authors' baseline)
+  RANDOM_FLIP: "horizontal"       # horizontal flip only (authors); rotations stay on
+DATALOADER:
+  SAMPLER_TRAIN: "TrainingSampler"   # default sampler (no weed oversampling)
+  NUM_WORKERS: 0                     # WSL2 shm safety
+TEST:
+  EVAL_PERIOD: 3000               # 5 evals at 3k/6k/9k/12k/15k (matches the compared run)
+RESIZE_AUG: False
+OUTPUT_DIR: output/Exp_SwinL_Baseline

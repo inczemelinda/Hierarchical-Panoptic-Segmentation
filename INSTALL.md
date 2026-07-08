@@ -3,10 +3,10 @@
 ### Requirements
 - Linux or macOS with Python ≥ 3.6
 - PyTorch ≥ 1.9 and [torchvision](https://github.com/pytorch/vision/) that matches the PyTorch installation.
-  Install them together at [pytorch.org](https://pytorch.org) to make sure of this. Note, please check
-  PyTorch version matches that is required by Detectron2.
+  Install them together at [pytorch.org](https://pytorch.org) to make sure of this. Note: please check
+  that the PyTorch version matches the one required by Detectron2.
 - Detectron2: follow [Detectron2 installation instructions](https://detectron2.readthedocs.io/tutorials/install.html).
-- OpenCV is optional but needed by demo and visualization
+- OpenCV is optional but is needed by the demo and visualization
 - `pip install -r requirements.txt`
 
 ### CUDA kernel for MSDeformAttn
@@ -20,7 +20,7 @@ sh make.sh
 ```
 
 #### Building on another system
-To build on a system that does not have a GPU device but provide the drivers:
+To build on a system that does not have a GPU device but provides the drivers:
 ```bash
 TORCH_CUDA_ARCH_LIST='8.0' FORCE_CUDA=1 python setup.py build install
 ```

@@ -42,6 +42,10 @@ MODELS = {
         "config": os.path.join(PROJECT_ROOT, "configs/phenobench/exp_hiera_tversky.yaml"),
         "weights": os.path.join(PROJECT_ROOT, "output/Exp_Hiera_Tversky/model_final.pth"),
     },
+    "SwinL_baseline": {
+        "config": os.path.join(PROJECT_ROOT, "configs/phenobench/exp_swinL_baseline.yaml"),
+        "weights": os.path.join(PROJECT_ROOT, "output/Exp_SwinL_Baseline/model_final.pth"),
+    },
 }
 
 

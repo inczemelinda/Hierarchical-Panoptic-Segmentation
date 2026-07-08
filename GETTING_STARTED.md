@@ -1,6 +1,6 @@
 ## Getting Started with Mask2Former
 
-This document provides a brief intro of the usage of Mask2Former.
+This document provides a brief introduction to the usage of Mask2Former.
 
 Please see [Getting Started with Detectron2](https://github.com/facebookresearch/detectron2/blob/master/GETTING_STARTED.md) for full usage.
 
@@ -43,7 +43,7 @@ python train_net.py --num-gpus 8 \
 ```
 
 The configs are made for 8-GPU training.
-Since we use ADAMW optimizer, it is not clear how to scale learning rate with batch size.
+Since we use the AdamW optimizer, it is not clear how to scale the learning rate with batch size.
 To train on 1 GPU, you need to figure out learning rate and batch size by yourself:
 ```
 python train_net.py \

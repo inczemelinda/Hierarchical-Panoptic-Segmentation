@@ -44,15 +44,12 @@ class PhenoBenchEvaluator(DatasetEvaluator):
 
         def process(self, inputs, outputs):
             for input, output in zip(inputs, outputs):
+                # plant- and leaf-level panoptic maps predicted for this image
                 plant_panoptic_img, segments_info = output["plant_panoptic_seg"]
-                # print('number of plant segments', len(segments_info))
                 plant_panoptic_img = plant_panoptic_img.cpu().numpy()
                 leaf_panoptic_img, segments_info = output["leaf_panoptic_seg"]
-                # print('number of leaf segments', len(segments_info))
                 leaf_panoptic_img = leaf_panoptic_img.cpu().numpy()
-                # print(panoptic_img.shape)
-                # panoptic_img = panoptic_img.cpu().numpy()
-                # print('sem shape', output["sem_seg"].shape)
+                # semantic map as the per-pixel argmax of the plant logits
                 semantics = output["plant_sem_seg"].argmax(dim=0).cpu().numpy()
                 cv2.imwrite(os.path.join(self._semantics_dir, input["image_name"]), semantics)
                 cv2.imwrite(os.path.join(self._plant_instances_dir, input["image_name"]), plant_panoptic_img)
