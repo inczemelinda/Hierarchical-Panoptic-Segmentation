@@ -21,23 +21,26 @@
             <form method="post" enctype="multipart/form-data" class="upload-form">
                 <div class="form-grid">
                     <div class="form-row">
-                        <label for="model">Model</label>
-                        <select id="model" name="model">
+                        <label>Models</label>
+                        <div class="checkbox-group">
                             {% for key, label in model_choices %}
-                                <option value="{{ key }}" {% if key == selected_model %}selected{% endif %}>{{ label }}</option>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="models" value="{{ key }}" {% if key in selected_models %}checked{% endif %}>
+                                    <span>{{ label }}</span>
+                                </label>
                             {% endfor %}
-                        </select>
+                        </div>
                     </div>
                     <div class="form-row">
                         <label for="image">Test image</label>
-                        <input type="file" id="image" name="image" accept="image/*" required>
+                        <input type="file" id="image" name="image" accept="image/*">
                     </div>
                 </div>
                 <div class="form-actions">
                     <button type="submit">Run inference</button>
                 </div>
                 {% if filename %}
-                    <p class="hint">Last uploaded file: {{ filename }}</p>
+                    <p class="hint">Current image: {{ filename }}</p>
                 {% endif %}
             </form>
 
@@ -46,55 +49,105 @@
             {% endif %}
         </section>
 
-        {% if images %}
+        {% if results %}
             <section class="card">
                 <div class="card-header">
                     <h2>Predictions</h2>
-                    <button type="button" id="magnifier-toggle" class="btn-secondary" aria-pressed="false">Magnifier</button>
+                    <button type="button" id="magnifier-toggle" class="toggle-switch" aria-pressed="false">
+                        <span class="toggle-label">Magnifier</span>
+                        <span class="toggle-pill">
+                            <span class="toggle-text">OFF</span>
+                            <span class="toggle-thumb"></span>
+                        </span>
+                    </button>
                 </div>
-                <div class="results-grid">
-                    <figure>
-                        <figcaption>Input image</figcaption>
-                        <img src="{{ images.original }}" alt="Input image">
-                    </figure>
-                    <figure>
-                        <figcaption>Plant-level panoptic segmentation</figcaption>
-                        <img src="{{ images.plant }}" alt="Plant-level panoptic segmentation">
-                    </figure>
-                    <figure>
-                        <figcaption>Plant segmentation overlay on input</figcaption>
-                        <img src="{{ images.overlay }}" alt="Plant segmentation overlay on the input image">
-                    </figure>
-                    <figure>
-                        <figcaption>Leaf-level panoptic segmentation</figcaption>
-                        <img src="{{ images.leaf }}" alt="Leaf-level panoptic segmentation">
-                    </figure>
-                    <figure>
-                        <figcaption>Leaf segmentation overlay on input</figcaption>
-                        <img src="{{ images.leaf_overlay }}" alt="Leaf segmentation overlay on the input image">
-                    </figure>
-                </div>
-            </section>
-        {% endif %}
 
-        <section class="card">
-            <h2>Model evaluation metrics</h2>
-            {% if metrics %}
-                <p class="hint">Latest values for model <strong>{{ selected_model }}</strong>{% if metrics.iteration is not none %} at iteration {{ metrics.iteration }}{% endif %}.</p>
-                <div class="metrics-grid">
-                    {% for key in metric_keys %}
-                        {% if key in metrics['values'] %}
-                            <div class="metric-card">
-                                <div class="metric-name">{{ key }}</div>
-                                <div class="metric-value">{{ "%.2f"|format(metrics['values'][key]) }}</div>
+                {% for r in results %}
+                    <div class="model-result">
+                        <h3 class="model-title">{{ r.label }}</h3>
+
+                        {% if r.error %}
+                            <div class="alert">{{ r.error }}</div>
+                        {% else %}
+                            <div class="results-grid">
+                                <figure>
+                                    <figcaption>Input image</figcaption>
+                                    <img src="{{ r.images.original }}" alt="Input image — {{ r.label }}">
+                                </figure>
+                                <figure>
+                                    <figcaption>Plant-level panoptic segmentation</figcaption>
+                                    <img src="{{ r.images.plant }}" alt="Plant-level panoptic segmentation — {{ r.label }}">
+                                </figure>
+                                <figure>
+                                    <figcaption>Plant segmentation overlay on input</figcaption>
+                                    <img src="{{ r.images.overlay }}" alt="Plant segmentation overlay — {{ r.label }}">
+                                </figure>
+                                <figure>
+                                    <figcaption>Leaf-level panoptic segmentation</figcaption>
+                                    <img src="{{ r.images.leaf }}" alt="Leaf-level panoptic segmentation — {{ r.label }}">
+                                </figure>
+                                <figure>
+                                    <figcaption>Leaf segmentation overlay on input</figcaption>
+                                    <img src="{{ r.images.leaf_overlay }}" alt="Leaf segmentation overlay — {{ r.label }}">
+                                </figure>
+                            </div>
+
+                            <div class="metrics-block">
+                                <h4 class="metrics-title">Evaluation metrics</h4>
+                                {% if r.metrics %}
+                                    <p class="hint">Latest values{% if r.metrics.iteration is not none %} at iteration {{ r.metrics.iteration }}{% endif %}.</p>
+                                    <div class="metrics-grid">
+                                        {% for key in metric_keys %}
+                                            {% if key in r.metrics['values'] %}
+                                                <div class="metric-card">
+                                                    <div class="metric-name">{{ key }}</div>
+                                                    <div class="metric-value">{{ "%.2f"|format(r.metrics['values'][key]) }}</div>
+                                                </div>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <p class="hint">No evaluation metrics found for this model yet.</p>
+                                {% endif %}
                             </div>
                         {% endif %}
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p class="hint">No evaluation metrics found for this model yet.</p>
-            {% endif %}
-        </section>
+                    </div>
+                {% endfor %}
+            </section>
+        {% endif %}
     </main>
+
+    <footer class="page-footer">
+        <div class="container">
+            <span>© Eng. Melinda Henrietta Incze</span>
+        </div>
+    </footer>
+
+    <div id="loading-overlay" class="loading-overlay" aria-hidden="true">
+        <div class="loading-box">
+            <svg class="sprout" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <ellipse class="soil" cx="60" cy="104" rx="32" ry="6"/>
+                <g class="plant">
+                    <path class="stem" d="M60,104 C60,88 60,72 60,58"/>
+                    <path class="leaf leaf-l" d="M59,60 C55,47 46,37 38,34 C42,44 51,54 59,60 Z"/>
+                    <path class="leaf leaf-r" d="M61,60 C65,47 74,37 82,34 C78,44 69,54 61,60 Z"/>
+                    <path class="leaf leaf-c" d="M60,58 C51,47 51,33 60,23 C69,33 69,47 60,58 Z"/>
+                </g>
+            </svg>
+            <p class="loading-text">Running inference…</p>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            var form = document.querySelector(".upload-form");
+            var overlay = document.getElementById("loading-overlay");
+            if (form && overlay) {
+                form.addEventListener("submit", function () {
+                    overlay.classList.add("show");
+                });
+            }
+        })();
+    </script>
 </body>
 </html>

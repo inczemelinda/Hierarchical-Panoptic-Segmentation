@@ -41,9 +41,10 @@ body {
 }
 
 .page-header {
-    background: #ffffff;
-    border-bottom: 1px solid var(--border-strong);
-    padding: 14px 0;
+    background: transparent;
+    border-bottom: none;
+    padding: 24px 0 4px;
+    text-align: center;
 }
 
 .page-header h1 {
@@ -99,37 +100,77 @@ main {
     border: none;
 }
 
-.btn-secondary {
+/* Magnifier on/off toggle switch (text inside the pill, sliding thumb) */
+.toggle-switch {
     font: inherit;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--primary-dark);
-    background: var(--primary-soft);
-    border: 1px solid var(--border-strong);
-    border-radius: 6px;
-    padding: 4px 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: transparent;
+    border: none;
+    padding: 2px;
     cursor: pointer;
-    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
-.btn-secondary:hover {
-    background: #d9ead0;
-}
-
-.btn-secondary:focus {
+.toggle-switch:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
+    border-radius: 8px;
 }
 
-.btn-secondary.active {
-    background: var(--primary);
+.toggle-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--primary-dark);
+}
+
+.toggle-pill {
+    position: relative;
+    width: 66px;
+    height: 28px;
+    border-radius: 999px;
+    background: #8a96a3;                 /* gray = OFF */
+    transition: background-color 0.2s ease;
+    flex: none;
+}
+
+.toggle-switch.active .toggle-pill {
+    background: var(--primary);          /* green = ON */
+}
+
+.toggle-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;         /* OFF: text on the left */
+    padding: 0 12px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
     color: #ffffff;
-    border-color: var(--primary);
 }
 
-.btn-secondary.active:hover {
-    background: var(--primary-dark);
-    border-color: var(--primary-dark);
+.toggle-switch.active .toggle-text {
+    justify-content: flex-end;           /* ON: text on the right */
+}
+
+.toggle-thumb {
+    position: absolute;
+    top: 3px;
+    left: 41px;                          /* OFF: thumb on the right */
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+    transition: left 0.2s ease;
+}
+
+.toggle-switch.active .toggle-thumb {
+    left: 3px;                           /* ON: thumb on the left */
 }
 
 .loupe {
@@ -170,6 +211,65 @@ body.magnifier-active .results-grid img {
 
 .form-row label {
     font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    align-items: center;
+    padding: 7px 0;
+}
+
+.checkbox-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    text-transform: none;
+    letter-spacing: 0;
+    cursor: pointer;
+}
+
+.checkbox-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.model-result {
+    padding-top: 14px;
+    margin-top: 14px;
+    border-top: 1px solid var(--primary-soft);
+}
+
+.model-result:first-of-type {
+    padding-top: 0;
+    margin-top: 0;
+    border-top: none;
+}
+
+.model-title {
+    margin: 0 0 10px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--primary-dark);
+}
+
+.metrics-block {
+    margin-top: 12px;
+}
+
+.metrics-title {
+    margin: 0 0 4px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase;
@@ -317,12 +417,110 @@ button[type="submit"]:focus {
 }
 
 .page-footer {
-    border-top: 1px solid var(--border);
-    background: #ffffff;
-    padding: 8px 0;
+    border-top: none;
+    background: transparent;
+    padding: 16px 0 24px;
     color: var(--text-muted);
     font-size: 12px;
     text-align: center;
+}
+
+/* Loading overlay with a sprouting-plant animation */
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(241, 246, 241, 0.92);
+    z-index: 2000;
+}
+
+.loading-overlay.show {
+    display: flex;
+}
+
+.loading-box {
+    text-align: center;
+}
+
+.sprout {
+    width: 120px;
+    height: 120px;
+}
+
+.sprout .soil {
+    fill: #cdae86;
+}
+
+.sprout .stem {
+    fill: none;
+    stroke: var(--primary);
+    stroke-width: 4;
+    stroke-linecap: round;
+    transform-origin: 60px 102px;
+    animation: sprout-grow 1.9s ease-in-out infinite;
+}
+
+.sprout .leaf {
+    fill: var(--accent);
+}
+
+.sprout .plant {
+    animation: sprout-fade 1.9s ease-in-out infinite;
+}
+
+.sprout .leaf-c {
+    transform-origin: 60px 58px;
+    animation: sprout-leaf-c 1.9s ease-in-out infinite;
+}
+
+.sprout .leaf-l {
+    transform-origin: 59px 60px;
+    animation: sprout-leaf-l 1.9s ease-in-out infinite;
+}
+
+.sprout .leaf-r {
+    transform-origin: 61px 60px;
+    animation: sprout-leaf-r 1.9s ease-in-out infinite;
+}
+
+@keyframes sprout-fade {
+    0% { opacity: 0; }
+    15% { opacity: 1; }
+    85% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+@keyframes sprout-grow {
+    0% { transform: scaleY(0); }
+    55% { transform: scaleY(1); }
+    100% { transform: scaleY(1); }
+}
+
+@keyframes sprout-leaf-c {
+    0%, 35% { transform: scale(0); }
+    64% { transform: scale(1); }
+    100% { transform: scale(1); }
+}
+
+@keyframes sprout-leaf-l {
+    0%, 45% { transform: scale(0); }
+    74% { transform: scale(1); }
+    100% { transform: scale(1); }
+}
+
+@keyframes sprout-leaf-r {
+    0%, 45% { transform: scale(0); }
+    74% { transform: scale(1); }
+    100% { transform: scale(1); }
+}
+
+.loading-text {
+    margin-top: 12px;
+    color: var(--primary-dark);
+    font-size: 14px;
+    font-weight: 600;
 }
 
 /* Tablet landscape — keep 4 image cols but ease metrics */

@@ -42,17 +42,16 @@ from mask2former import add_maskformer2_config
 
 app = Flask(__name__)
 
-# Registry of trained models surfaced in the UI dropdown.
-# To add another model later, append a new entry with the same shape.
+# registry of the trained models exposed in the user interface
 MODELS = {
-    "R50": {
-        "label": "R50",
-        "config": os.path.join(PROJECT_ROOT, "configs/phenobench/exp_full_aug_tversky.yaml"),
-        "weights": os.path.join(PROJECT_ROOT, "output/Exp_FullAug_Tversky_R50/model_final.pth"),
-        "output_dir": os.path.join(PROJECT_ROOT, "output/Exp_FullAug_Tversky_R50"),
+    "SwinL_baseline": {
+        "label": "Swin-L (baseline)",
+        "config": os.path.join(PROJECT_ROOT, "configs/phenobench/exp_swinL_baseline.yaml"),
+        "weights": os.path.join(PROJECT_ROOT, "output/Exp_SwinL_Baseline/model_final.pth"),
+        "output_dir": os.path.join(PROJECT_ROOT, "output/Exp_SwinL_Baseline"),
     },
     "SwinL": {
-        "label": "Swin-L",
+        "label": "Swin-L (proposed)",
         "config": os.path.join(PROJECT_ROOT, "configs/phenobench/exp_swinL_tversky.yaml"),
         "weights": os.path.join(PROJECT_ROOT, "output/Exp_SwinL_Tversky/model_final.pth"),
         "output_dir": os.path.join(PROJECT_ROOT, "output/Exp_SwinL_Tversky"),
@@ -204,49 +203,77 @@ def to_data_uri(arr):
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
 
 
+# Server-side state so predictions accumulate across runs on the same image.
+# A GET (fresh load or refresh) resets it to the initial state.
+STATE = {"image": None, "image_name": None, "results": {}}
+
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     model_choices = [(key, info["label"]) for key, info in MODELS.items()]
-    selected_model = request.form.get("model") or next(iter(MODELS))
-
-    images = None
     error = None
-    filename = None
 
-    if request.method == "POST":
+    if request.method == "GET":
+        # A fresh load or a page refresh returns to the initial, empty state.
+        STATE["image"] = None
+        STATE["image_name"] = None
+        STATE["results"] = {}
+    else:
         upload = request.files.get("image")
-        if upload is None or not upload.filename:
-            error = "Please choose an image file before submitting."
-        elif selected_model not in MODELS:
-            error = f"Unknown model: {selected_model}"
-        else:
+        selected = [k for k in MODELS if k in request.form.getlist("models")]
+
+        # A newly uploaded image starts a fresh comparison; otherwise the
+        # previously uploaded image is reused so the user need not re-upload.
+        if upload is not None and upload.filename:
             try:
                 pil = Image.open(upload.stream)
                 pil.load()
-                filename = upload.filename
-                model = get_model(selected_model)
-                orig, plant_viz, leaf_viz, overlay, leaf_overlay = run_inference(model, pil)
-                images = {
-                    "original": to_data_uri(orig),
-                    "plant": to_data_uri(plant_viz),
-                    "leaf": to_data_uri(leaf_viz),
-                    "overlay": to_data_uri(overlay),
-                    "leaf_overlay": to_data_uri(leaf_overlay),
-                }
+                STATE["image"] = pil
+                STATE["image_name"] = upload.filename
+                STATE["results"] = {}
             except Exception as exc:
-                error = f"Inference failed: {exc}"
+                error = f"Could not read the uploaded image: {exc}"
 
-    metrics = get_metrics(selected_model)
+        if error is None:
+            if STATE["image"] is None:
+                error = "Please choose an image file before submitting."
+            elif not selected:
+                error = "Please select at least one model before submitting."
+            else:
+                # Run only the newly selected models; keep the ones already
+                # computed so results accumulate on the same image.
+                for key in selected:
+                    if key in STATE["results"]:
+                        continue
+                    entry = {"key": key, "label": MODELS[key]["label"],
+                             "images": None, "metrics": None, "error": None}
+                    try:
+                        model = get_model(key)
+                        orig, plant_viz, leaf_viz, overlay, leaf_overlay = run_inference(model, STATE["image"])
+                        entry["images"] = {
+                            "original": to_data_uri(orig),
+                            "plant": to_data_uri(plant_viz),
+                            "leaf": to_data_uri(leaf_viz),
+                            "overlay": to_data_uri(overlay),
+                            "leaf_overlay": to_data_uri(leaf_overlay),
+                        }
+                        entry["metrics"] = get_metrics(key)
+                    except Exception as exc:
+                        entry["error"] = f"Inference failed for {entry['label']}: {exc}"
+                    STATE["results"][key] = entry
+
+    # Accumulated results and the models already run, in registry order.
+    results = [STATE["results"][k] for k in MODELS if k in STATE["results"]] or None
+    selected_models = [k for k in MODELS if k in STATE["results"]]
 
     return render_template(
         "index.html",
         model_choices=model_choices,
-        selected_model=selected_model,
-        images=images,
-        metrics=metrics,
+        selected_models=selected_models,
+        results=results,
         metric_keys=METRIC_KEYS,
         error=error,
-        filename=filename,
+        filename=STATE["image_name"],
     )
 
 

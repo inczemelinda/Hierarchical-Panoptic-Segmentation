@@ -1,4 +1,4 @@
-This directory contains few tools for MaskFormer.
+This directory contains a few tools for MaskFormer.
 
 * `convert-torchvision-to-d2.py`
 
